@@ -12,13 +12,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 var app = builder.Build();
 
-// For local/test setup, create the database automatically if it does not exist.
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
-}
-
+    
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
