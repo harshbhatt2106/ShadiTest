@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ShadiTest.Data;
 using ShadiTest.Models;
 
 namespace ShadiTest.Controllers;
@@ -7,24 +9,29 @@ namespace ShadiTest.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-    private static readonly List<User> Users = new()
-    {
-        new User { Id = 1, Name = "Harsh", Email = "harsh@example.com", Age = 25 },
-        new User { Id = 2, Name = "Rahul", Email = "rahul@example.com", Age = 28 }
-    };
+    private readonly ApplicationDbContext _context;
 
-    private static int _nextId = 2;
+    public UsersController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
 
     [HttpGet]
-    public ActionResult<IEnumerable<User>> GetAll()
+    public async Task<ActionResult<IEnumerable<User>>> GetAll()
     {
-        return Ok(Users);
+        var users = await _context.Users
+            .AsNoTracking()
+            .ToListAsync();
+
+        return Ok(users);
     }
 
     [HttpGet("{id:int}")]
-    public ActionResult<User> GetById(int id)
+    public async Task<ActionResult<User>> GetById(int id)
     {
-        var user = Users.FirstOrDefault(x => x.Id == id);
+        var user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id);
 
         if (user is null)
             return NotFound(new { message = "User not found." });
@@ -33,18 +40,18 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<User> Create(User user)
+    public async Task<ActionResult<User>> Create(User user)
     {
-        user.Id = Interlocked.Increment(ref _nextId);
-        Users.Add(user);
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
     }
 
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, User updatedUser)
+    public async Task<ActionResult<User>> Update(int id, User updatedUser)
     {
-        var user = Users.FirstOrDefault(x => x.Id == id);
+        var user = await _context.Users.FindAsync(id);
 
         if (user is null)
             return NotFound(new { message = "User not found." });
@@ -53,18 +60,22 @@ public class UsersController : ControllerBase
         user.Email = updatedUser.Email;
         user.Age = updatedUser.Age;
 
+        await _context.SaveChangesAsync();
+
         return Ok(user);
     }
 
     [HttpDelete("{id:int}")]
-    public IActionResult Delete(int id)
+    public async Task<IActionResult> Delete(int id)
     {
-        var user = Users.FirstOrDefault(x => x.Id == id);
+        var user = await _context.Users.FindAsync(id);
 
         if (user is null)
             return NotFound(new { message = "User not found." });
 
-        Users.Remove(user);
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
+
         return NoContent();
     }
 }
